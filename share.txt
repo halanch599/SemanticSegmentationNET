@@ -1,0 +1,35 @@
+try
+            {
+                if (pictureBox1.Image == null) return;
+
+                var img = new Bitmap(pictureBox1.Image)
+                    .ToImage<Bgr, byte>();
+
+                var mask = img.Convert<Gray, byte>()
+                    .ThresholdBinaryInv(new Gray(150), new Gray(255));
+               
+                Mat distanceTransform = new Mat();
+                CvInvoke.DistanceTransform(mask, distanceTransform, null, Emgu.CV.CvEnum.DistType.L2, 3);
+                CvInvoke.Normalize(distanceTransform, distanceTransform, 0, 255, Emgu.CV.CvEnum.NormType.MinMax);
+                
+                var markers = distanceTransform.ToImage<Gray, byte>().ThresholdBinary(new Gray(50), new Gray(255));
+                CvInvoke.ConnectedComponents(markers, markers);
+                
+                var output = markers.Convert<Gray, Int32>();
+                CvInvoke.Watershed(img, output);
+
+                Image<Gray, byte> contours = output.Convert<byte>(delegate (Int32 b)
+                {
+                    return (byte)(b == -1 ? 255 : 0);
+                });
+
+                contours._Dilate(1);
+                img.SetValue(new Bgr(0, 255, 0), contours);
+                AddImage(img, "Watershed Segmentation");
+                pictureBox1.Image = img.ToBitmap();
+                
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
